@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Downloaded data, weights and generated figures
+data/
+outputs/
