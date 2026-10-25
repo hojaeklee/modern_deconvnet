@@ -39,6 +39,20 @@ Models: `alexnet` and `vgg16` use torchvision's ImageNet weights.
 | Draw | `figures.py` | 3x3 projections next to 3x3 patches, per channel. |
 | Reference | `reference_deconv.py` | The deconvnet by hand (switches, unpool, rectify, transposed conv). Not used by the pipeline; the test checks Captum matches it exactly. |
 
+## Example output
+
+`docs/figures/vgg16/` has every layer for VGG16 (original Caffe weights),
+2,000 Imagenette val images, 16 random live channels per layer, deconvnet and
+guided backprop. For example
+[layer 3, deconvnet](docs/figures/vgg16/layer3_deconv.jpg) and
+[layer 5, guided backprop](docs/figures/vgg16/layer5_guided.jpg).
+Regenerate with:
+
+```bash
+uv sync --extra keras
+uv run modern-deconvnet --model vgg16-keras --max-images 2000 --method deconv guided
+```
+
 ## What to expect
 
 Layers 1 to 3 look like the paper: colour blobs and edges, then textures,
@@ -49,3 +63,12 @@ the forward ReLU masks, so only the pooling switches carry information about
 the image (see Nie et al., [1805.07039](https://arxiv.org/abs/1805.07039)).
 AlexNet, closer to the paper's network, has fewer layers for that to compound
 over. The image patches still show what each unit responds to.
+
+## Reading the code
+
+Read in pipeline order: `models.py`, `scan.py`, `project.py` with
+`reference_deconv.py` beside it, `receptive_field.py`, `figures.py`, then
+`cli.py` to see them wired together. The tests are short and double as
+specifications: `test_project.py` (Captum equals the hand-written
+deconvnet), `test_receptive_field.py` (closed-form RF equals the region with
+nonzero gradient) and `test_scan.py` (streaming top-k equals brute force).
