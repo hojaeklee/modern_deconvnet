@@ -15,13 +15,15 @@ deconvnet fall out of autograd for free:
 ``method="guided"`` swaps in guided backprop (Springenberg et al. 2014), which
 also applies the forward ReLU mask. It is here for comparison: on deep VGG
 layers the pure deconvnet output gets noisy, guided backprop stays sharp.
+``method="gradient"`` is the plain gradient, the control the sanity checks
+(``sanity.py``) compare both against.
 """
 
 import torch
-from captum.attr import NeuronDeconvolution, NeuronGuidedBackprop
+from captum.attr import NeuronDeconvolution, NeuronGradient, NeuronGuidedBackprop
 from torch import nn
 
-METHODS = {"deconv": NeuronDeconvolution, "guided": NeuronGuidedBackprop}
+METHODS = {"deconv": NeuronDeconvolution, "guided": NeuronGuidedBackprop, "gradient": NeuronGradient}
 
 
 def project_unit(features: nn.Sequential, layer_idx: int, images: torch.Tensor,
