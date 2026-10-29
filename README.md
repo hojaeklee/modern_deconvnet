@@ -113,7 +113,7 @@ the top-9 images with the unit's per-token activation laid over each, then a
 projection panel comparing four ways back to the image.
 
 ```bash
-uv run modern-deconvnet-vit --max-images 500             # CPU subset, about 10 minutes
+uv run modern-deconvnet-vit --max-images 500             # CPU subset: ~8 min on 4 cores, 5 of them SAE training
 uv run modern-deconvnet-vit --max-images 3925 --sanity   # all of Imagenette val, GPU recommended
 uv run modern-deconvnet-vit --random-init --max-images 64 --sae-steps 200   # plumbing check, no download
 ```
