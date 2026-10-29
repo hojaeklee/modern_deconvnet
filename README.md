@@ -64,6 +64,46 @@ the image (see Nie et al., [1805.07039](https://arxiv.org/abs/1805.07039)).
 AlexNet, closer to the paper's network, has fewer layers for that to compound
 over. The image patches still show what each unit responds to.
 
+## Milestone 2: sanity checks
+
+Do the projections depend on the trained network, or mostly on the image?
+`sanity.py` runs the tests from Adebayo et al., *Sanity Checks for Saliency
+Maps* ([1810.03292](https://arxiv.org/abs/1810.03292)) on the same units the
+Fig. 2 harness draws, with the plain gradient as a control:
+
+- **Model randomization**: re-initialize conv weights, top-down (*cascade*)
+  or one at a time (*independent*), and project the same unit of the same
+  image again. Score: Spearman rank correlation with the trained map, signed.
+- **Unit sensitivity**: project other channels at the same location. Similar
+  maps mean the projection says little about *which* unit it came from.
+- **Edge baseline**: correlation of |map| with a Sobel edge map of the patch.
+
+```bash
+uv run modern-deconvnet-sanity --model vgg16-keras --max-images 2000   # reuses the Fig. 2 scan
+```
+
+Results for VGG16 (16 units per layer, 2,000 Imagenette images) are in
+`docs/figures/vgg16/sanity/`, e.g. [layer 5, cascade](docs/figures/vgg16/sanity/layer5_cascade.jpg).
+Median signed Spearman with the trained map:
+
+| layer | method | top conv randomized | all convs randomized | other channels, same spot |
+|---|---|---|---|---|
+| layer3 | deconv | 0.94 | 0.37 | 0.91 |
+| layer3 | guided | 0.98 | 0.67 | 0.96 |
+| layer3 | gradient | -0.10 | -0.02 | -0.00 |
+| layer5 | deconv | 1.00 | 0.35 | 1.00 |
+| layer5 | guided | 1.00 | 0.49 | 1.00 |
+| layer5 | gradient | -0.04 | -0.00 | -0.06 |
+
+Deconvnet and guided backprop fail the test the way Adebayo et al. and Nie
+et al. ([1805.07039](https://arxiv.org/abs/1805.07039)) predict. At layer 5
+you can re-initialize the top 7 of 13 convs and the map barely moves, and
+every channel at a location gives the same map. The pictures come from the
+image and the lower layers, not from the unit. The gradient passes: it changes
+as soon as any weight does. Even with *every* conv random, deconv and guided
+maps still correlate 0.35 to 0.5 with the trained ones, because max-pool
+switches and (for guided) ReLU masks are computed from the image.
+
 ## Reading the code
 
 Read in pipeline order: `models.py`, `scan.py`, `project.py` with

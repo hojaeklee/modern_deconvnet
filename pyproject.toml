@@ -25,6 +25,7 @@ keras = ["h5py>=3.16.0"]
 
 [project.scripts]
 modern-deconvnet = "modern_deconvnet.cli:main"
+modern-deconvnet-sanity = "modern_deconvnet.sanity_cli:main"
 
 [build-system]
 requires = ["hatchling"]
