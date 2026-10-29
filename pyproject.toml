@@ -1,7 +1,7 @@
 [project]
 name = "modern-deconvnet"
 version = "0.1.0"
-description = "Zeiler & Fergus deconvnet visualizations on modern PyTorch, via Captum"
+description = "Zeiler & Fergus deconvnet visualizations on modern PyTorch (CNNs via Captum, then DINOv2)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -9,6 +9,7 @@ dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pillow>=13.0.0",
+    "timm>=1.0.30",
     "torch>=2.14.1",
     "torchvision>=0.29.1",
     "tqdm>=4.70.1",
@@ -26,6 +27,7 @@ keras = ["h5py>=3.16.0"]
 [project.scripts]
 modern-deconvnet = "modern_deconvnet.cli:main"
 modern-deconvnet-sanity = "modern_deconvnet.sanity_cli:main"
+modern-deconvnet-vit = "modern_deconvnet.vit_cli:main"
 
 [build-system]
 requires = ["hatchling"]

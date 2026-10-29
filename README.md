@@ -104,6 +104,56 @@ as soon as any weight does. Even with *every* conv random, deconv and guided
 maps still correlate 0.35 to 0.5 with the trained ones, because max-pool
 switches and (for guided) ReLU masks are computed from the image.
 
+## Milestone 3: DINOv2 with registers
+
+The same protocol on a vision transformer. Units are (a) the MLP hidden
+neurons of a block (the 1536 GELU outputs in ViT-S) and (b) features of a
+sparse autoencoder trained here on one block's residual stream. For each unit:
+the top-9 images with the unit's per-token activation laid over each, then a
+projection panel comparing four ways back to the image.
+
+```bash
+uv run modern-deconvnet-vit --max-images 500             # CPU subset, about 10 minutes
+uv run modern-deconvnet-vit --max-images 3925 --sanity   # all of Imagenette val, GPU recommended
+uv run modern-deconvnet-vit --random-init --max-images 64 --sae-steps 200   # plumbing check, no download
+```
+
+Weights come from the Hugging Face hub via timm
+(`vit_small_patch14_reg4_dinov2.lvd142m`). Where the hub is blocked, download
+Meta's `dinov2_vits14_reg4_pretrain.pth` some other way and pass `--weights`.
+Images are 224x224, so the patch grid is 16x16 (patch size 14).
+
+Output in `outputs/dinov2-s-reg/`: `<site>_top9.png` per site (e.g.
+`block8_mlp`, `block8_sae`), `<site>_unit<u>.png` projection panels,
+`summary.md` (SAE fit, and how many units peak on a CLS/register token rather
+than a patch) and, with `--sanity`, `sanity/` with the cascading
+randomization test from milestone 2.
+
+| Stage | File | What it does |
+|---|---|---|
+| Model | `vit.py` | Loads DINOv2 from timm and writes its forward pass out by hand (patchify, position, CLS + 4 registers, 12 pre-norm blocks with LayerScale). The backward rule of GELU, LayerNorm and the attention matmuls is a parameter (`Rules`); the forward value never changes. |
+| SAE | `sae.py` | TopK sparse autoencoder (Gao et al., [2406.04093](https://arxiv.org/abs/2406.04093)) on patch tokens of one block's residual stream. 8x expansion, k = 32. |
+| Scan | `vit_scan.py` | Top-k images per unit over the 16x16 patch grid, reusing `scan.TopK`. Also the largest activation on CLS/register tokens. |
+| Project | `vit_project.py` | The four projections, each from the unit's strongest patch token. |
+| Draw | `vit_figures.py` | Top-9 heatmap grids and the projection panels. No receptive-field crop: attention makes every token's receptive field the whole image. |
+| Sanity | `vit_sanity.py` | Re-initializes transformer blocks (Linear and LayerNorm; LayerScale kept) and reuses `sanity.similarity`. |
+
+The four projections:
+
+- **gradient**: d(unit)/d(pixels), the control.
+- **GELU deconv**: the deconvnet's ReLU rule (backward passes `relu(grad)`,
+  ignoring the input) applied at every GELU. A hack: a ViT has no max-pool
+  switches, and LayerNorm and softmax keep their true derivatives.
+- **Chefer**: gradient-weighted attention rollout (Chefer, Gur & Wolf,
+  [2103.15679](https://arxiv.org/abs/2103.15679)), one value per patch.
+- **AttnLRP**: Achtibat et al., [2402.05602](https://arxiv.org/abs/2402.05602),
+  as gradient x input with its rules swapped in: GELU passes relevance through,
+  LayerNorm's 1/std is held constant, the two attention matmuls split relevance
+  evenly. Written by hand (the `lxt` package targets Hugging Face models and
+  pulls in transformers and bitsandbytes); `tests/test_vit.py` checks each rule
+  conserves relevance. It's the plain (epsilon = 0) variant, without the gamma
+  rule the AttnLRP authors suggest for less noisy ViT maps.
+
 ## Reading the code
 
 Read in pipeline order: `models.py`, `scan.py`, `project.py` with
@@ -112,3 +162,6 @@ Read in pipeline order: `models.py`, `scan.py`, `project.py` with
 specifications: `test_project.py` (Captum equals the hand-written
 deconvnet), `test_receptive_field.py` (closed-form RF equals the region with
 nonzero gradient) and `test_scan.py` (streaming top-k equals brute force).
+For milestone 3, read `vit.py` first (it doubles as a DINOv2 architecture
+summary), then `vit_scan.py`, `vit_project.py`, `sae.py`; `test_vit.py`
+checks the hand-written forward against timm and each AttnLRP rule on its own.
